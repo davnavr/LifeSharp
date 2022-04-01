@@ -32,6 +32,12 @@ impl<T: Print> Print for Located<T> {
     }
 }
 
+impl<T: Print> std::fmt::Display for Located<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        self.print(&mut Printer::new(f))
+    }
+}
+
 /// An identifier in the source code file along with its location.
 pub type Id<'t> = Located<&'t identifier::Id>;
 
@@ -54,6 +60,8 @@ impl Print for PathId<'_> {
         printer.write_iter(&self.identifiers, "\\")
     }
 }
+
+crate::print_display_impl!(PathId<'_>);
 
 impl Default for PathId<'_> {
     /// The default path, which refers to definitions in the current scope.
@@ -84,6 +92,8 @@ impl Print for TypeId<'_> {
     }
 }
 
+crate::print_display_impl!(TypeId<'_>);
+
 /// Represents the name of a type.
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[non_exhaustive]
@@ -93,6 +103,16 @@ pub enum Type<'t> {
     //Array(),
     //RawPointer(),
 }
+
+impl Print for Type<'_> {
+    fn print(&self, printer: &mut Printer) -> print::Result {
+        match self {
+            Self::Named(type_name) => type_name.print(printer),
+        }
+    }
+}
+
+crate::print_display_impl!(Type<'_>);
 
 /// Represents the definition of a generic parameter in a function or type definition.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -120,6 +140,8 @@ impl Print for GenericTypeConstraint<'_> {
         }
     }
 }
+
+crate::print_display_impl!(GenericTypeConstraint<'_>);
 
 /// Describes a generic parameter.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -154,6 +176,8 @@ impl Print for GenericParameterDefinition<'_> {
     }
 }
 
+crate::print_display_impl!(GenericParameterDefinition<'_>);
+
 /// Represents a pattern.
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[non_exhaustive]
@@ -172,6 +196,8 @@ impl Print for Pattern<'_> {
         }
     }
 }
+
+crate::print_display_impl!(Pattern<'_>);
 
 /// Represents an expression.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -223,3 +249,7 @@ pub struct Tree<'t> {
     /// The top-level declarations declared in the source file.
     pub declarations: Vec<TopDeclaration<'t>>,
 }
+
+// impl Print for Tree<'_> {
+
+// }

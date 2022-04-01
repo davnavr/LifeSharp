@@ -6,16 +6,16 @@ use std::fmt::{Formatter, Write as _};
 pub use std::fmt::Result;
 
 /// Used for printing source code.
-pub struct Printer<'a> {
-    output: Formatter<'a>,
+pub struct Printer<'a, 'b> {
+    output: &'b mut Formatter<'a>,
     indent_level: usize,
     /// If `true`, indicates that indentation has not yet been written for the current line of source code.
     write_indent: bool,
 }
 
-impl<'a> Printer<'a> {
+impl<'a, 'b> Printer<'a, 'b> {
     /// Creates a printer that writes source code to the specified `Formatter`.
-    pub fn new(output: Formatter<'a>) -> Self {
+    pub fn new(output: &'b mut Formatter<'a>) -> Self {
         Self {
             output,
             indent_level: 0,
@@ -93,7 +93,7 @@ impl<'a> Printer<'a> {
 /// Trait implemented by types that represent AST nodes to print source code.
 pub trait Print {
     /// Prints source code.
-    fn print(&self, printer: &mut Printer<'_>) -> Result;
+    fn print(&self, printer: &mut Printer) -> Result;
 }
 
 impl<'a, T: Print + ?Sized> Print for &'a T {
