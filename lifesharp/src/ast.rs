@@ -91,6 +91,16 @@ impl Display for TypeId<'_> {
     }
 }
 
+/// Represents the name of a type.
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[non_exhaustive]
+pub enum Type<'t> {
+    /// A named type located with a path.
+    Named(TypeId<'t>),
+    //Array(),
+    //RawPointer(),
+}
+
 /// Represents the definition of a generic parameter in a function or type definition.
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[non_exhaustive]
@@ -154,13 +164,44 @@ impl Display for GenericParameterDefinition<'_> {
     }
 }
 
+/// Represents a pattern.
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[non_exhaustive]
+pub enum Pattern<'t> {
+    /// Binds the matched value to the specified name.
+    Name(Id<'t>),
+    /// Ignores the value.
+    Ignore,
+}
+
+impl Display for Pattern<'_> {
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+        match self {
+            Self::Name(name) => Display::fmt(&name, f),
+            Self::Ignore => f.write_char('_'),
+        }
+    }
+}
+
+/// Represents a parameter in a function definition.
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[non_exhaustive]
+pub struct Parameter<'t> {
+    // TODO: Might be duplicated if Name pattern allows a type in it. Could remove explicit type here to allow type inference for parameters.
+    /// The type of the parameter.
+    pub argument_type: Type<'t>,
+    /// Pattern applied to the argument.
+    pub pattern: Pattern<'t>,
+}
+
 /// Represents a function definition.
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[non_exhaustive]
 pub struct FunctionDefinition<'t> {
     /// The name of the function.
     pub name: Id<'t>,
-    //pub parameters: Vec<Parameter>,
+    /// The parameters of the function.
+    pub parameters: Vec<Parameter<'t>>,
     /// The generic parameters of the function.
     pub generic_parameters: Vec<GenericParameterDefinition<'t>>,
     //pub body: Vec<Located<Expression>>,
