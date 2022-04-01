@@ -121,7 +121,7 @@ pub enum Type<'t> {
     Primitive(PrimitiveType),
     /// A named type located with a path.
     Named(TypeId<'t>),
-    //Array(),
+    //Array { element_type: Box<Type<'t>>, count: u32 },
     //RawPointer(),
 }
 
@@ -231,7 +231,8 @@ crate::print_display_impl!(Pattern<'_>);
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[non_exhaustive]
 pub enum Expression<'t> {
-    //IntegerLiteral(),
+    /// A literal boolean value.
+    BooleanLiteral(bool),
     /// A local variable or parameter.
     Name(Id<'t>),
 }
@@ -239,6 +240,7 @@ pub enum Expression<'t> {
 impl Print for Expression<'_> {
     fn print(&self, printer: &mut Printer) -> std::fmt::Result {
         match self {
+            Self::BooleanLiteral(value) => printer.write_str(if *value { "true" } else { "false" }),
             Self::Name(identifier) => identifier.print(printer),
         }
     }
