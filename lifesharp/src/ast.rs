@@ -227,12 +227,70 @@ impl Print for Pattern<'_> {
 
 crate::print_display_impl!(Pattern<'_>);
 
+/// A series of expressions.
+pub type Block<'t> = Vec<Located<Expression<'t>>>;
+
+fn print_block<'t>(block: &[Located<Expression<'t>>], printer: &mut Printer) -> print::Result {
+    printer.indent();
+
+    for expression in block.iter() {
+        expression.print(printer)?;
+        printer.newline()?;
+    }
+
+    printer.dedent();
+
+    Ok(())
+}
+
+/// Represents an `if`...`then`, `if`...`then`...`else`, or `if`...`then`...`elif`...`then`...`else` expression.
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[non_exhaustive]
+pub struct IfElseExpression<'t> {
+    /// The condition in the `if` part of the expression.
+    pub condition: Expression<'t>,
+    /// The expressions that are evaluated if the condition is true.
+    pub true_branch: Block<'t>,
+    /// The `elif` conditions and their corresponding block.
+    pub other_branches: Vec<(Expression<'t>, Block<'t>)>,
+    /// The expressions that are evaluated if no condition is met.
+    pub else_branch: Block<'t>,
+}
+
+impl Print for IfElseExpression<'_> {
+    fn print(&self, printer: &mut Printer) -> print::Result {
+        printer.write_str("if ")?;
+        self.condition.print(printer)?;
+        printer.write_str(" then")?;
+        printer.newline()?;
+        print_block(&self.true_branch, printer)?;
+
+        for (other_condition, other_branch) in self.other_branches.iter() {
+            printer.write_str("elif ")?;
+            other_condition.print(printer)?;
+            printer.write_str(" then")?;
+            printer.newline()?;
+            print_block(other_branch, printer)?;
+        }
+
+        printer.write_str("else")?;
+        printer.newline()?;
+        print_block(&self.else_branch, printer)
+    }
+}
+
+crate::print_display_impl!(IfElseExpression<'_>);
+
 /// Represents an expression.
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[non_exhaustive]
 pub enum Expression<'t> {
     /// A literal boolean value.
     BooleanLiteral(bool),
+    /// A conditional expression.
+    IfElse(Box<IfElseExpression<'t>>),
+    //Switch,
+    //Match,
     /// A local variable or parameter.
     Name(Id<'t>),
 }
@@ -241,6 +299,7 @@ impl Print for Expression<'_> {
     fn print(&self, printer: &mut Printer) -> std::fmt::Result {
         match self {
             Self::BooleanLiteral(value) => printer.write_str(if *value { "true" } else { "false" }),
+            Self::IfElse(conditional) => conditional.print(printer),
             Self::Name(identifier) => identifier.print(printer),
         }
     }
@@ -294,7 +353,7 @@ pub struct FunctionDefinition<'t> {
     /// The return type of the function.
     pub return_type: Option<Type<'t>>,
     /// The expressions that make up the function body.
-    pub body: Vec<Located<Expression<'t>>>,
+    pub body: Block<'t>,
 }
 
 impl<'t> FunctionDefinition<'t> {
@@ -336,14 +395,7 @@ impl Print for FunctionDefinition<'_> {
 
         printer.write_str(" =")?;
         printer.newline()?;
-        printer.indent();
-
-        for expression in self.body.iter() {
-            expression.print(printer)?;
-            printer.newline()?;
-        }
-
-        printer.dedent();
+        print_block(&self.body, printer)?;
         Ok(())
     }
 }
