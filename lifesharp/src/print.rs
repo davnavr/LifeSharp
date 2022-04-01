@@ -46,7 +46,7 @@ impl<'a> Printer<'a> {
     }
 
     /// Writes a newline into the source code, indicating that indentation must be written in the new line.
-    /// 
+    ///
     /// Use this as the primary means to emit newlines into the output, as other methods will not indicate that a indentation
     /// must be written.
     pub fn newline(&mut self) -> Result {
@@ -71,6 +71,23 @@ impl<'a> Printer<'a> {
         self.write_indentation()?;
         self.output.write_fmt(f)
     }
+
+    /// Prints the elements returned by an iterator, separated by the specified separator.
+    pub fn write_iter<T: Print, S: Print, I: IntoIterator<Item = T>>(
+        &mut self,
+        content: I,
+        separator: S,
+    ) -> Result {
+        for (index, item) in content.into_iter().enumerate() {
+            if index > 0 {
+                separator.print(self)?;
+            }
+
+            item.print(self)?;
+        }
+
+        Ok(())
+    }
 }
 
 /// Trait implemented by types that represent AST nodes to print source code.
@@ -82,6 +99,18 @@ pub trait Print {
 impl<'a, T: Print + ?Sized> Print for &'a T {
     fn print(&self, printer: &mut Printer) -> Result {
         <T as Print>::print(self, printer)
+    }
+}
+
+impl Print for str {
+    fn print(&self, printer: &mut Printer) -> Result {
+        printer.write_str(self)
+    }
+}
+
+impl Print for () {
+    fn print(&self, _: &mut Printer) -> Result {
+        Ok(())
     }
 }
 

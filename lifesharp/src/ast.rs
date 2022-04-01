@@ -27,8 +27,8 @@ impl<T> Located<T> {
 }
 
 impl<T: Print> Print for Located<T> {
-    fn print(&self, p: &mut Printer) -> print::Result {
-        self.content.print(p)
+    fn print(&self, printer: &mut Printer) -> print::Result {
+        self.content.print(printer)
     }
 }
 
@@ -46,20 +46,12 @@ pub struct PathId<'t> {
 }
 
 impl Print for PathId<'_> {
-    fn print(&self, p: &mut Printer) -> print::Result {
+    fn print(&self, printer: &mut Printer) -> print::Result {
         if self.global {
-            p.write_char('\\')?;
+            printer.write_char('\\')?;
         }
 
-        for (index, identifier) in self.identifiers.iter().enumerate() {
-            if index > 0 {
-                p.write_char('\\')?;
-            }
-
-            identifier.print(p)?;
-        }
-
-        Ok(())
+        printer.write_iter(&self.identifiers, "\\")
     }
 }
 
@@ -85,11 +77,10 @@ pub struct TypeId<'t> {
 }
 
 impl Print for TypeId<'_> {
-    fn print(&self, p: &mut Printer) -> print::Result {
-        Print::print(&self.path, p)?;
-        p.write_str("::")?;
-        Print::print(&self.name, p)?;
-        Ok(())
+    fn print(&self, printer: &mut Printer) -> print::Result {
+        self.path.print(printer)?;
+        printer.write_str("::")?;
+        self.name.print(printer)
     }
 }
 
@@ -122,6 +113,14 @@ pub enum GenericTypeConstraint<'t> {
     //Outlives(LifetimeId<'t>),
 }
 
+impl Print for GenericTypeConstraint<'_> {
+    fn print(&self, printer: &mut Printer) -> print::Result {
+        match self {
+            Self::Implements(type_name) => type_name.print(printer),
+        }
+    }
+}
+
 /// Describes a generic parameter.
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[non_exhaustive]
@@ -133,30 +132,19 @@ pub enum GenericParameterKind<'t> {
 }
 
 impl Print for GenericParameterDefinition<'_> {
-    fn print(&self, p: &mut Printer) -> print::Result {
+    fn print(&self, printer: &mut Printer) -> print::Result {
         match &self.kind {
-            GenericParameterKind::Type(_) => p.write_char('\'')?,
-            GenericParameterKind::Lifetime(_) => p.write_char('~')?,
+            GenericParameterKind::Type(_) => printer.write_char('\'')?,
+            GenericParameterKind::Lifetime(_) => printer.write_char('~')?,
         }
 
-       self.name.print(p)?;
+        self.name.print(printer)?;
 
         match &self.kind {
             GenericParameterKind::Type(constraints) => {
                 if !constraints.is_empty() {
-                    p.write_str(": ")?;
-
-                    for (index, constraint) in constraints.iter().enumerate() {
-                        if index > 0 {
-                            p.write_str(", ")?;
-                        }
-
-                        match &constraint.content {
-                            GenericTypeConstraint::Implements(constraint_name) => {
-                                Print::print(&constraint_name, p)?
-                            }
-                        }
-                    }
+                    printer.write_str(": ")?;
+                    printer.write_iter(constraints, ", ")?;
                 }
             }
             GenericParameterKind::Lifetime(()) => (),
@@ -177,10 +165,10 @@ pub enum Pattern<'t> {
 }
 
 impl Print for Pattern<'_> {
-    fn print(&self, p: &mut Printer) -> std::fmt::Result {
+    fn print(&self, printer: &mut Printer) -> std::fmt::Result {
         match self {
-            Self::Name(name) => Print::print(&name, p),
-            Self::Ignore => p.write_char('_'),
+            Self::Name(name) => name.print(printer),
+            Self::Ignore => printer.write_char('_'),
         }
     }
 }
