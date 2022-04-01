@@ -33,6 +33,26 @@ impl Id {
         std::mem::transmute(identifier)
     }
 
+    /// Creates a reference to a borrowed identifier string, checking that the string is not empty and contains valid identifier
+    /// characters.
+    pub fn new(identifier: &str) -> Result<&Id, InvalidError> {
+        if let Some((index, bad)) = identifier.chars().enumerate().find(|(i, c)| {
+            !(c.is_ascii_alphabetic() || *c == '_') || (*i == 0 && c.is_ascii_digit())
+        }) {
+            Err(InvalidError::InvalidCodePoint {
+                code_point: bad,
+                index,
+            })
+        } else if identifier.is_empty() {
+            Err(InvalidError::Empty)
+        } else {
+            unsafe {
+                // Safety: Validation is performed above.
+                Ok(Id::new_unchecked(identifier))
+            }
+        }
+    }
+
     /// Interprets the contents of this identifier string as a borrowed UTF-8 string.
     pub fn as_str(&self) -> &str {
         &self.0
@@ -43,19 +63,7 @@ impl<'i> TryFrom<&'i str> for &'i Id {
     type Error = InvalidError;
 
     fn try_from(identifier: &str) -> Result<&Id, InvalidError> {
-        if let Some((index, bad)) = identifier.chars().enumerate().find(|(i, c)| {
-            !(c.is_ascii_alphabetic() || *c == '_') || (*i == 0 && c.is_ascii_digit())
-        }) {
-            Err(InvalidError::InvalidCodePoint {
-                code_point: bad,
-                index,
-            })
-        } else {
-            unsafe {
-                // Safety: Validation is performed above.
-                Ok(Id::new_unchecked(identifier))
-            }
-        }
+        Id::new(identifier)
     }
 }
 

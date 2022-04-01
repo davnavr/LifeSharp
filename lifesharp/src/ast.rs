@@ -51,6 +51,16 @@ pub struct PathId<'t> {
     pub identifiers: Vec<Id<'t>>,
 }
 
+impl<'t> PathId<'t> {
+    /// Creates a global path.
+    pub fn global(identifiers: Vec<Id<'t>>) -> Self {
+        Self {
+            global: true,
+            identifiers,
+        }
+    }
+}
+
 impl Print for PathId<'_> {
     fn print(&self, printer: &mut Printer) -> print::Result {
         if self.global {
@@ -82,6 +92,13 @@ pub struct TypeId<'t> {
     /// The name of the type.
     pub name: Id<'t>,
     //pub generic_arguments: Vec<>,
+}
+
+impl<'t> TypeId<'t> {
+    /// Creates a new type with the specified path and name.
+    pub fn new(path: PathId<'t>, name: Id<'t>) -> Self {
+        Self { path, name }
+    }
 }
 
 impl Print for TypeId<'_> {
@@ -188,6 +205,12 @@ pub enum Pattern<'t> {
     Ignore,
 }
 
+impl std::default::Default for Pattern<'_> {
+    fn default() -> Self {
+        Self::Ignore
+    }
+}
+
 impl Print for Pattern<'_> {
     fn print(&self, printer: &mut Printer) -> std::fmt::Result {
         match self {
@@ -229,6 +252,16 @@ pub struct Parameter<'t> {
     pub argument_type: Type<'t>,
 }
 
+impl<'t> Parameter<'t> {
+    /// Creates a parameter with the specified type.
+    pub fn new(argument_type: Type<'t>) -> Self {
+        Self {
+            pattern: Pattern::Ignore,
+            argument_type,
+        }
+    }
+}
+
 impl Print for Parameter<'_> {
     fn print(&self, printer: &mut Printer) -> std::fmt::Result {
         printer.write_char('(')?;
@@ -255,6 +288,19 @@ pub struct FunctionDefinition<'t> {
     pub return_type: Option<Type<'t>>,
     /// The expressions that make up the function body.
     pub body: Vec<Located<Expression<'t>>>,
+}
+
+impl<'t> FunctionDefinition<'t> {
+    /// Creates a function definition with the specified name.
+    pub fn new(name: Id<'t>) -> Self {
+        Self {
+            name,
+            generic_parameters: Vec::default(),
+            parameters: Vec::default(),
+            return_type: None,
+            body: Vec::default(),
+        }
+    }
 }
 
 impl Print for FunctionDefinition<'_> {
@@ -295,12 +341,20 @@ impl Print for FunctionDefinition<'_> {
     }
 }
 
+crate::print_display_impl!(FunctionDefinition<'_>);
+
 /// Represents a top-level declaration defined in a source code file.
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[non_exhaustive]
 pub enum TopDeclaration<'t> {
     /// A function definition defined at the top level.
     FunctionDefinition(Box<FunctionDefinition<'t>>),
+}
+
+impl<'t> From<FunctionDefinition<'t>> for TopDeclaration<'t> {
+    fn from(function_definition: FunctionDefinition<'t>) -> Self {
+        Self::FunctionDefinition(Box::new(function_definition))
+    }
 }
 
 impl Print for TopDeclaration<'_> {
@@ -310,6 +364,8 @@ impl Print for TopDeclaration<'_> {
         }
     }
 }
+
+crate::print_display_impl!(TopDeclaration<'_>);
 
 /// Represents the content of a single source file.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
@@ -331,3 +387,5 @@ impl Print for Tree<'_> {
         Ok(())
     }
 }
+
+crate::print_display_impl!(Tree<'_>);
