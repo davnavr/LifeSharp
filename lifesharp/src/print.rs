@@ -13,9 +13,9 @@ pub struct Printer<'a> {
     write_indent: bool,
 }
 
-impl Printer<'_> {
+impl<'a> Printer<'a> {
     /// Creates a printer that writes source code to the specified `Formatter`.
-    pub fn new(output: Formatter<'_>) -> Self {
+    pub fn new(output: Formatter<'a>) -> Self {
         Self {
             output,
             indent_level: 0,
@@ -51,7 +51,7 @@ impl Printer<'_> {
     /// must be written.
     pub fn newline(&mut self) -> Result {
         self.write_indent = true;
-        self.output.write_char('\n')?;
+        self.output.write_char('\n')
     }
 
     /// Writes a character to the output.
@@ -77,4 +77,22 @@ impl Printer<'_> {
 pub trait Print {
     /// Prints source code.
     fn print(&self, printer: &mut Printer<'_>) -> Result;
+}
+
+impl<'a, T: Print + ?Sized> Print for &'a T {
+    fn print(&self, printer: &mut Printer) -> Result {
+        <T as Print>::print(self, printer)
+    }
+}
+
+#[doc(hidden)]
+#[macro_export]
+macro_rules! print_display_impl {
+    ($implementor: ty) => {
+        impl std::fmt::Display for $implementor {
+            fn fmt(&self, f: &mut std::fmt::Formatter) -> Result {
+                crate::print::Print::print(&self, &mut crate::print::Printer::new(f))
+            }
+        }
+    };
 }

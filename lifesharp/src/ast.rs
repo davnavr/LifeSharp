@@ -1,8 +1,10 @@
 //! Contains types used to represent the structure of LifeSharp source files.
 
+#![deny(missing_debug_implementations)]
+
 use crate::identifier;
 use crate::location::{Offset, OffsetRange};
-use std::fmt::{Display, Formatter, Write as _};
+use crate::print::{self, Print, Printer};
 
 /// Represents content in a source code file associated with its location.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -24,9 +26,9 @@ impl<T> Located<T> {
     }
 }
 
-impl<T: Display> Display for Located<T> {
-    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
-        Display::fmt(&self.content, f)
+impl<T: Print> Print for Located<T> {
+    fn print(&self, p: &mut Printer) -> print::Result {
+        self.content.print(p)
     }
 }
 
@@ -43,18 +45,18 @@ pub struct PathId<'t> {
     pub identifiers: Vec<Id<'t>>,
 }
 
-impl Display for PathId<'_> {
-    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+impl Print for PathId<'_> {
+    fn print(&self, p: &mut Printer) -> print::Result {
         if self.global {
-            f.write_char('\\')?;
+            p.write_char('\\')?;
         }
 
         for (index, identifier) in self.identifiers.iter().enumerate() {
             if index > 0 {
-                f.write_char('\\')?;
+                p.write_char('\\')?;
             }
 
-            Display::fmt(&identifier, f)?;
+            identifier.print(p)?;
         }
 
         Ok(())
@@ -82,11 +84,11 @@ pub struct TypeId<'t> {
     //pub generic_arguments: Vec<>,
 }
 
-impl Display for TypeId<'_> {
-    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
-        Display::fmt(&self.path, f)?;
-        f.write_str("::")?;
-        Display::fmt(&self.name, f)?;
+impl Print for TypeId<'_> {
+    fn print(&self, p: &mut Printer) -> print::Result {
+        Print::print(&self.path, p)?;
+        p.write_str("::")?;
+        Print::print(&self.name, p)?;
         Ok(())
     }
 }
@@ -130,28 +132,28 @@ pub enum GenericParameterKind<'t> {
     Lifetime(()), //(Vec<LifetimeId<'t>>)
 }
 
-impl Display for GenericParameterDefinition<'_> {
-    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+impl Print for GenericParameterDefinition<'_> {
+    fn print(&self, p: &mut Printer) -> print::Result {
         match &self.kind {
-            GenericParameterKind::Type(_) => f.write_char('\'')?,
-            GenericParameterKind::Lifetime(_) => f.write_char('~')?,
+            GenericParameterKind::Type(_) => p.write_char('\'')?,
+            GenericParameterKind::Lifetime(_) => p.write_char('~')?,
         }
 
-        Display::fmt(&self.name, f)?;
+       self.name.print(p)?;
 
         match &self.kind {
             GenericParameterKind::Type(constraints) => {
                 if !constraints.is_empty() {
-                    f.write_str(": ")?;
+                    p.write_str(": ")?;
 
                     for (index, constraint) in constraints.iter().enumerate() {
                         if index > 0 {
-                            f.write_str(", ")?;
+                            p.write_str(", ")?;
                         }
 
                         match &constraint.content {
                             GenericTypeConstraint::Implements(constraint_name) => {
-                                Display::fmt(&constraint_name, f)?
+                                Print::print(&constraint_name, p)?
                             }
                         }
                     }
@@ -174,11 +176,11 @@ pub enum Pattern<'t> {
     Ignore,
 }
 
-impl Display for Pattern<'_> {
-    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+impl Print for Pattern<'_> {
+    fn print(&self, p: &mut Printer) -> std::fmt::Result {
         match self {
-            Self::Name(name) => Display::fmt(&name, f),
-            Self::Ignore => f.write_char('_'),
+            Self::Name(name) => Print::print(&name, p),
+            Self::Ignore => p.write_char('_'),
         }
     }
 }

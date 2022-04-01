@@ -1,5 +1,6 @@
 //! Types to represent identifier strings in source code.
 
+use crate::print::{Print, Printer};
 use std::fmt::{Debug, Display, Formatter};
 
 /// Represents a borrowed identifier string.
@@ -67,6 +68,12 @@ impl Debug for Id {
 impl Display for Id {
     fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
         Display::fmt(&self.0, f)
+    }
+}
+
+impl Print for Id {
+    fn print(&self, p: &mut Printer) -> std::fmt::Result {
+        p.write_str(&self.0)
     }
 }
 
