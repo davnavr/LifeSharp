@@ -208,16 +208,38 @@ pub enum Expression<'t> {
     Name(Id<'t>),
 }
 
+impl Print for Expression<'_> {
+    fn print(&self, printer: &mut Printer) -> std::fmt::Result {
+        match self {
+            Self::Name(identifier) => identifier.print(printer),
+        }
+    }
+}
+
+crate::print_display_impl!(Expression<'_>);
+
 /// Represents a parameter in a function definition.
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[non_exhaustive]
 pub struct Parameter<'t> {
+    /// Pattern applied to the argument.
+    pub pattern: Pattern<'t>,
     // TODO: Might be duplicated if Name pattern allows a type in it. Could remove explicit type here to allow type inference for parameters.
     /// The type of the parameter.
     pub argument_type: Type<'t>,
-    /// Pattern applied to the argument.
-    pub pattern: Pattern<'t>,
 }
+
+impl Print for Parameter<'_> {
+    fn print(&self, printer: &mut Printer) -> std::fmt::Result {
+        printer.write_char('(')?;
+        self.pattern.print(printer)?;
+        printer.write_str(": ")?;
+        self.argument_type.print(printer)?;
+        printer.write_char(')')
+    }
+}
+
+crate::print_display_impl!(Parameter<'_>);
 
 /// Represents a function definition.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -225,12 +247,52 @@ pub struct Parameter<'t> {
 pub struct FunctionDefinition<'t> {
     /// The name of the function.
     pub name: Id<'t>,
-    /// The parameters of the function.
-    pub parameters: Vec<Parameter<'t>>,
     /// The generic parameters of the function.
     pub generic_parameters: Vec<GenericParameterDefinition<'t>>,
+    /// The parameters of the function.
+    pub parameters: Vec<Parameter<'t>>,
+    /// The return type of the function.
+    pub return_type: Option<Type<'t>>,
     /// The expressions that make up the function body.
     pub body: Vec<Located<Expression<'t>>>,
+}
+
+impl Print for FunctionDefinition<'_> {
+    fn print(&self, printer: &mut Printer) -> std::fmt::Result {
+        printer.write_str("def ")?;
+        self.name.print(printer)?;
+
+        if !self.generic_parameters.is_empty() {
+            printer.write_char('<')?;
+            printer.write_iter(&self.generic_parameters, ", ")?;
+            printer.write_char('>')?;
+        }
+
+        printer.write_char(' ')?;
+
+        if self.parameters.is_empty() {
+            printer.write_str("()")?;
+        } else {
+            printer.write_iter(&self.parameters, " ")?;
+        }
+
+        if let Some(return_type) = &self.return_type {
+            printer.write_char(' ')?;
+            return_type.print(printer)?;
+        }
+
+        printer.write_str(" =")?;
+        printer.newline()?;
+        printer.indent();
+
+        for expression in self.body.iter() {
+            expression.print(printer)?;
+            printer.newline()?;
+        }
+
+        printer.dedent();
+        Ok(())
+    }
 }
 
 /// Represents a top-level declaration defined in a source code file.
@@ -239,6 +301,14 @@ pub struct FunctionDefinition<'t> {
 pub enum TopDeclaration<'t> {
     /// A function definition defined at the top level.
     FunctionDefinition(Box<FunctionDefinition<'t>>),
+}
+
+impl Print for TopDeclaration<'_> {
+    fn print(&self, printer: &mut Printer) -> std::fmt::Result {
+        match self {
+            Self::FunctionDefinition(function_definition) => function_definition.print(printer),
+        }
+    }
 }
 
 /// Represents the content of a single source file.
@@ -250,6 +320,14 @@ pub struct Tree<'t> {
     pub declarations: Vec<TopDeclaration<'t>>,
 }
 
-// impl Print for Tree<'_> {
+impl Print for Tree<'_> {
+    fn print(&self, printer: &mut Printer) -> std::fmt::Result {
+        for declaration in self.declarations.iter() {
+            declaration.print(printer)?;
+            printer.newline()?;
+            printer.newline()?;
+        }
 
-// }
+        Ok(())
+    }
+}

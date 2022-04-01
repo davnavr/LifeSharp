@@ -119,7 +119,7 @@ impl Print for () {
 macro_rules! print_display_impl {
     ($implementor: ty) => {
         impl std::fmt::Display for $implementor {
-            fn fmt(&self, f: &mut std::fmt::Formatter) -> Result {
+            fn fmt(&self, f: &mut std::fmt::Formatter) -> crate::print::Result {
                 crate::print::Print::print(&self, &mut crate::print::Printer::new(f))
             }
         }
