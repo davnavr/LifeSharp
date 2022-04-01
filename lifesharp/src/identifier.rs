@@ -106,3 +106,13 @@ impl std::borrow::Borrow<str> for Id {
         self.as_str()
     }
 }
+
+impl Clone for Box<Id> {
+    fn clone(&self) -> Self {
+        unsafe {
+            // Safety: Id has same layout as str.
+            let identifier = std::mem::transmute::<&Box<Id>, &Box<str>>(self);
+            std::mem::transmute(identifier.clone())
+        }
+    }
+}
