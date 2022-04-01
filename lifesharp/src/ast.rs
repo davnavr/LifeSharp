@@ -183,6 +183,15 @@ impl Display for Pattern<'_> {
     }
 }
 
+/// Represents an expression.
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[non_exhaustive]
+pub enum Expression<'t> {
+    //IntegerLiteral(),
+    /// A local variable or parameter.
+    Name(Id<'t>),
+}
+
 /// Represents a parameter in a function definition.
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[non_exhaustive]
@@ -204,7 +213,8 @@ pub struct FunctionDefinition<'t> {
     pub parameters: Vec<Parameter<'t>>,
     /// The generic parameters of the function.
     pub generic_parameters: Vec<GenericParameterDefinition<'t>>,
-    //pub body: Vec<Located<Expression>>,
+    /// The expressions that make up the function body.
+    pub body: Vec<Located<Expression<'t>>>,
 }
 
 /// Represents a top-level declaration defined in a source code file.
