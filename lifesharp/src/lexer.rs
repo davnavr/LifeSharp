@@ -57,3 +57,13 @@ pub enum Token {
     LiteralBoolean(bool),
     Identifier(Box<Id>),
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::lexer::Token;
+
+    #[test]
+    fn size_is_acceptable() {
+        assert!(std::mem::size_of::<Token>() <= 24)
+    }
+}
