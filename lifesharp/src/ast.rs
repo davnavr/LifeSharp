@@ -1,6 +1,6 @@
 //! Contains types used to represent the structure of LifeSharp source files.
 
-#![deny(missing_debug_implementations)]
+#![deny(missing_docs, missing_debug_implementations)]
 
 use crate::identifier;
 use crate::location::{Offset, OffsetRange};

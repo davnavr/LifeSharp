@@ -1,5 +1,7 @@
 //! Opeartions on line and column numbers in the LifeSharp source code files.
 
+#![deny(missing_docs, missing_debug_implementations)]
+
 /// Represents a line or column number.
 pub use std::num::NonZeroUsize as Number;
 

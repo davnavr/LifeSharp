@@ -1,5 +1,7 @@
 //! Model of the LifeSharp type system.
 
+#![deny(missing_debug_implementations)]
+
 use crate::print::{self, Print, Printer};
 
 /// Represents a primitive type.

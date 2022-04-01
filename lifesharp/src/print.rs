@@ -1,5 +1,7 @@
 //! Printing LifeSharp source code.
 
+#![deny(missing_docs)]
+
 use std::fmt::{Formatter, Write as _};
 
 /// Type returned by functions that print source code.

@@ -1,5 +1,7 @@
 //! Types to represent identifier strings in source code.
 
+#![deny(missing_docs, missing_debug_implementations)]
+
 use crate::print::{Print, Printer};
 use std::fmt::{Debug, Display, Formatter};
 
