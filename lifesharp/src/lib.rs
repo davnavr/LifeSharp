@@ -6,3 +6,4 @@ pub mod ast;
 pub mod identifier;
 pub mod location;
 pub mod print;
+pub mod types;

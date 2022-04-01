@@ -111,10 +111,14 @@ impl Print for TypeId<'_> {
 
 crate::print_display_impl!(TypeId<'_>);
 
+pub use crate::types::Primitive as PrimitiveType;
+
 /// Represents the name of a type.
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[non_exhaustive]
 pub enum Type<'t> {
+    /// A primitive type.
+    Primitive(PrimitiveType),
     /// A named type located with a path.
     Named(TypeId<'t>),
     //Array(),
@@ -124,6 +128,7 @@ pub enum Type<'t> {
 impl Print for Type<'_> {
     fn print(&self, printer: &mut Printer) -> print::Result {
         match self {
+            Self::Primitive(primitive_type) => primitive_type.print(printer),
             Self::Named(type_name) => type_name.print(printer),
         }
     }
