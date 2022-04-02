@@ -1,17 +1,45 @@
 //! Tokenization of LifeSharp source code.
 
-#![deny(missing_debug_implementations)]
-
-use crate::identifier::Id;
+use crate::identifier::{Id, Identifier};
 use crate::location::{Location, Offset, OffsetRange};
+use crate::print;
+use typed_arena::Arena;
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 #[repr(transparent)]
-pub struct LiteralString(Box<str>);
+pub struct LiteralString(String);
+
+impl std::ops::Deref for LiteralString {
+    type Target = String;
+
+    fn deref(&self) -> &String {
+        &self.0
+    }
+}
+
+impl std::ops::DerefMut for LiteralString {
+    fn deref_mut(&mut self) -> &mut String {
+        &mut self.0
+    }
+}
+
+impl From<String> for LiteralString {
+    fn from(literal: String) -> Self {
+        Self(literal)
+    }
+}
+
+impl print::Print for LiteralString {
+    fn print(&self, printer: &mut print::Printer) -> print::Result {
+        printer.write_char('\'')?;
+        todo!("write characters");
+        printer.write_char('\'')
+    }
+}
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[non_exhaustive]
-pub enum Token {
+pub enum Token<'l> {
     Dedent,
     Indent,
     OpenCurlyBrace,
@@ -22,7 +50,7 @@ pub enum Token {
     CloseSquareBracket,
     LessThan,
     GreaterThan,
-    /// Used as the path separator.
+    /// Used as the path separator (e.g. `some\path\to::SomeType`).
     BackwardSlash,
     PlusSign,
     MinusSign,
@@ -53,9 +81,37 @@ pub enum Token {
     //Not,
     //Or,
     LiteralCharacter(char),
-    LiteralString(LiteralString),
+    LiteralString(&'l LiteralString),
     LiteralBoolean(bool),
-    Identifier(Box<Id>),
+    Identifier(&'l Identifier),
+}
+
+/// Allows the reuse of some objects allocated during tokenization.
+#[derive(Default)]
+pub struct Cache<'o> {
+    tokens: Vec<(Token<'o>, OffsetRange)>,
+    //locations: 
+}
+
+#[derive(Default)]
+pub struct Output<'o> {
+    tokens: Box<[(Token<'o>, OffsetRange)]>,
+    literal_strings: Arena<LiteralString>,
+    identifiers: Arena<Identifier>,
+    locations: (), //LocationMap,
+}
+
+pub fn tokenize<'o>(input: (), cache: Option<&mut Cache<'o>>) -> Output<'o> {
+    let mut output = Output::default();
+
+    if let Some(Cache { tokens: previous_tokens }) = cache {
+        previous_tokens.clear();
+        //previous_output.locations.clear();
+    }
+
+
+
+    output
 }
 
 #[cfg(test)]
@@ -64,6 +120,6 @@ mod tests {
 
     #[test]
     fn size_is_acceptable() {
-        assert!(std::mem::size_of::<Token>() <= 24)
+        assert!(std::mem::size_of::<Token>() <= 16)
     }
 }
