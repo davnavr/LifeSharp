@@ -5,16 +5,36 @@
 use crate::location::{Location, Offset, OffsetRange};
 use std::iter::IntoIterator;
 
+/// Buffer used to store a [`String`] without line feed (`\n`) or carriage return (`\r`) characters.
+#[derive(Debug)]
+#[repr(transparent)]
+pub struct LineBuffer<'a>(&'a mut String);
+
+impl LineBuffer<'_> {
+    /// Appends a character to the buffer.
+    ///
+    /// # Panics
+    /// Panics if a line feed (`\n`) or carriage return (`\r`) is appended.
+    pub fn push(&mut self, c: char) {
+        match c {
+            '\n' | '\r' => panic!("no newline characters are allowed"),
+            _ => self.0.push(c),
+        }
+    }
+}
+
+/// Result type used when reading a line from an [`Input`].
+pub type LineResult<'a, E> = Result<Option<LineBuffer<'a>>, E>;
+
 /// Implemented by inputs to the tokenizer, allowing the reading of lines from a source.
 pub trait Input {
     /// Type returned if an attempt to read characters from the source fails.
     type Error;
 
     /// Retrieves the next line of characters from the source and stores them in the buffer.
-    /// If no characters are appended to the buffer, then it is interpreted as the end of the file being encountered.
     ///
-    /// Implementors should ensure that no line feed (`\n`) or carriage return (`\r`) characters are present in the buffer.
-    fn next_line(&mut self, buffer: &mut String) -> Result<(), Self::Error>;
+    /// To indicate the end of the file, return an `Ok(None)`.
+    fn next_line<'a>(&mut self, buffer: LineBuffer<'a>) -> LineResult<'a, Self::Error>;
 }
 
 /// Reads lines of source code from a character iterator.
@@ -31,12 +51,13 @@ impl<C: IntoIterator<Item = char>> From<C> for CharIteratorInput<C> {
 impl<C: IntoIterator<Item = char>> Input for CharIteratorInput<C> {
     type Error = std::convert::Infallible;
 
-    fn next_line(&mut self, buffer: &mut String) -> Result<(), Self::Error> {
+    fn next_line<'a>(&mut self, buffer: LineBuffer<'a>) -> LineResult<'a, Self::Error> {
         todo!("read characters until EOF or LF or CRLF is encountered");
-        Ok(())
+        Ok(None)
     }
 }
 
+/// Reads lines of source code from a [`Read`].
 #[derive(Debug)]
 #[repr(transparent)]
 pub struct ReaderInput<R> {
@@ -45,18 +66,16 @@ pub struct ReaderInput<R> {
 
 impl<R: std::io::Read> From<R> for ReaderInput<R> {
     fn from(reader: R) -> Self {
-        Self {
-            reader
-        }
+        Self { reader }
     }
 }
 
 impl<R: std::io::Read> Input for ReaderInput<R> {
     type Error = std::io::Error;
 
-    fn next_line(&mut self, buffer: &mut String) -> Result<(), Self::Error> {
+    fn next_line<'a>(&mut self, buffer: LineBuffer<'a>) -> LineResult<'a, Self::Error> {
         todo!("read characters until EOF or LF or CRLF is encountered");
-        Ok(())
+        Ok(None)
     }
 }
 
@@ -93,7 +112,24 @@ impl InputSource for std::fs::File {
     }
 }
 
-pub(super) struct InputWrapper<'c, I> {
+pub(super) struct Wrapper<'b, I> {
     input: I,
-    line_buffer: &'c mut String,
+    buffer: &'b mut String,
+}
+impl<'b, I: Input> Wrapper<'b, I> {
+    pub(super) fn new<S: InputSource<IntoInput = I>>(source: S, buffer: &'b mut String) -> Self {
+        Self {
+            input: source.into_input(),
+            buffer,
+        }
+    }
+
+    pub(super) fn next_line(&mut self) -> Result<Option<&str>, <I as Input>::Error> {
+        self.buffer.clear();
+        if self.input.next_line(LineBuffer(self.buffer))?.is_some() {
+            Ok(Some(self.buffer.as_str()))
+        } else {
+            Ok(None)
+        }
+    }
 }

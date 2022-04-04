@@ -7,7 +7,7 @@ use typed_arena::Arena;
 
 mod input;
 
-pub use input::{CharIteratorInput, InputSource, Input};
+pub use input::{CharIteratorInput, Input, InputSource, ReaderInput};
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 #[repr(transparent)]
@@ -93,7 +93,7 @@ pub enum Token<'l> {
 /// Allows the reuse of some objects allocated during tokenization.
 #[derive(Default)]
 pub struct Cache<'o> {
-    //line_buffer: String,
+    line_buffer: String,
     tokens: Vec<(Token<'o>, OffsetRange)>,
     //locations:
 }
@@ -112,13 +112,32 @@ pub fn tokenize<'o, S: InputSource>(
 ) -> Result<Output<'o>, <<S as InputSource>::IntoInput as Input>::Error> {
     let mut output = Output::default();
 
+    let mut owned_line_buffer;
+    let line_buffer: &mut String;
+
+    let mut owned_tokens;
+    let tokens: &mut Vec<(Token<'o>, OffsetRange)>;
+
     if let Some(Cache {
-        tokens: previous_tokens,
+        line_buffer: ref mut previous_line_buffer,
+        tokens: ref mut previous_tokens,
     }) = cache
     {
+        line_buffer = previous_line_buffer;
+
         previous_tokens.clear();
+        tokens = previous_tokens;
+
         //previous_output.locations.clear();
+    } else {
+        owned_line_buffer = String::default();
+        line_buffer = &mut owned_line_buffer;
+
+        owned_tokens = Vec::default();
+        tokens = &mut owned_tokens;
     }
+
+    let input = input::Wrapper::new(source, line_buffer);
 
     Ok(output)
 }
