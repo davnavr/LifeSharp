@@ -5,6 +5,9 @@
 /// Represents a line or column number.
 pub use std::num::NonZeroUsize as Number;
 
+/// The first line or column number.
+pub const FIRST_NUMBER: Number = unsafe { Number::new_unchecked(1) };
+
 /// Represents a UTF-8 byte offset into a source code file.
 pub type Offset = usize;
 
@@ -19,6 +22,12 @@ pub struct Location {
 }
 
 impl Location {
+    /// Gets a location corresponding to the first character of the file
+    pub const FIRST: Self = Self {
+        line: FIRST_NUMBER,
+        column: FIRST_NUMBER,
+    };
+
     /// Gets the line number.
     pub fn line_number(&self) -> Number {
         self.line
@@ -28,4 +37,10 @@ impl Location {
     pub fn column_number(&self) -> Number {
         self.column
     }
+}
+
+/// Maps offsets in a source file to line and column numbers.
+#[derive(Debug)]
+pub struct Map {
+    
 }
