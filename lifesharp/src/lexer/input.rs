@@ -2,7 +2,7 @@
 
 #![deny(missing_docs)]
 
-use crate::location::{Location, Offset, OffsetRange};
+use std::convert::Infallible;
 use std::iter::IntoIterator;
 
 /// Buffer used to store a [`String`] without line feed (`\n`) or carriage return (`\r`) characters.
@@ -23,8 +23,15 @@ impl LineBuffer<'_> {
     }
 }
 
-/// Result type used when reading a line from an [`Input`].
-pub type LineResult<'a, E> = Result<Option<LineBuffer<'a>>, E>;
+/// Indicates whether an [`Input`] still has lines to be read.
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+#[repr(u8)]
+pub enum Continue {
+    /// Indicates that more lines will follow.
+    More,
+    /// Indicates that the end of the file has been reached.
+    End,
+}
 
 /// Implemented by inputs to the tokenizer, allowing the reading of lines from a source.
 pub trait Input {
@@ -32,50 +39,34 @@ pub trait Input {
     type Error;
 
     /// Retrieves the next line of characters from the source and stores them in the buffer.
-    ///
-    /// To indicate the end of the file, return an `Ok(None)`.
-    fn next_line<'a>(&mut self, buffer: LineBuffer<'a>) -> LineResult<'a, Self::Error>;
+    fn next_line<'a>(&mut self, buffer: LineBuffer<'a>) -> Result<Continue, Self::Error>;
 }
 
-/// Reads lines of source code from a character iterator.
-#[derive(Debug)]
-#[repr(transparent)]
-pub struct CharIteratorInput<C>(C);
+impl Input for std::str::Lines<'_> {
+    type Error = Infallible;
 
-impl<C: IntoIterator<Item = char>> From<C> for CharIteratorInput<C> {
-    fn from(iterator: C) -> Self {
-        Self(iterator)
+    fn next_line<'a>(&mut self, buffer: LineBuffer<'a>) -> Result<Continue, Self::Error> {
+        if let Some(line) = self.next() {
+            buffer.0.push_str(line);
+            Ok(Continue::More)
+        } else {
+            Ok(Continue::End)
+        }
     }
 }
 
-impl<C: IntoIterator<Item = char>> Input for CharIteratorInput<C> {
-    type Error = std::convert::Infallible;
-
-    fn next_line<'a>(&mut self, buffer: LineBuffer<'a>) -> LineResult<'a, Self::Error> {
-        todo!("read characters until EOF or LF or CRLF is encountered");
-        Ok(None)
-    }
-}
-
-/// Reads lines of source code from a [`Read`].
-#[derive(Debug)]
-#[repr(transparent)]
-pub struct ReaderInput<R> {
-    reader: R,
-}
-
-impl<R: std::io::Read> From<R> for ReaderInput<R> {
-    fn from(reader: R) -> Self {
-        Self { reader }
-    }
-}
-
-impl<R: std::io::Read> Input for ReaderInput<R> {
+impl<B: std::io::BufRead> Input for std::io::Lines<B> {
     type Error = std::io::Error;
 
-    fn next_line<'a>(&mut self, buffer: LineBuffer<'a>) -> LineResult<'a, Self::Error> {
-        todo!("read characters until EOF or LF or CRLF is encountered");
-        Ok(None)
+    fn next_line<'a>(&mut self, buffer: LineBuffer<'a>) -> std::io::Result<Continue> {
+        match self.next() {
+            Some(Ok(line)) => {
+                buffer.0.push_str(line.as_str());
+                Ok(Continue::More)
+            }
+            Some(Err(error)) => Err(error),
+            None => Ok(Continue::End),
+        }
     }
 }
 
@@ -97,25 +88,27 @@ impl<I: Input> InputSource for I {
 }
 
 impl<'a> InputSource for &'a str {
-    type IntoInput = CharIteratorInput<std::str::Chars<'a>>;
+    type IntoInput = std::str::Lines<'a>;
 
     fn into_input(self) -> Self::IntoInput {
-        self.chars().into()
+        self.lines()
     }
 }
 
 impl InputSource for std::fs::File {
-    type IntoInput = ReaderInput<std::fs::File>;
+    type IntoInput = std::io::Lines<std::io::BufReader<Self>>;
 
     fn into_input(self) -> Self::IntoInput {
-        self.into()
+        std::io::BufRead::lines(std::io::BufReader::new(self))
     }
 }
 
+#[derive(Debug)]
 pub(super) struct Wrapper<'b, I> {
     input: I,
     buffer: &'b mut String,
 }
+
 impl<'b, I: Input> Wrapper<'b, I> {
     pub(super) fn new<S: InputSource<IntoInput = I>>(source: S, buffer: &'b mut String) -> Self {
         Self {
@@ -126,10 +119,10 @@ impl<'b, I: Input> Wrapper<'b, I> {
 
     pub(super) fn next_line(&mut self) -> Result<Option<&str>, <I as Input>::Error> {
         self.buffer.clear();
-        if self.input.next_line(LineBuffer(self.buffer))?.is_some() {
-            Ok(Some(self.buffer.as_str()))
-        } else {
-            Ok(None)
-        }
+
+        Ok(match self.input.next_line(LineBuffer(self.buffer))? {
+            Continue::More => Some(self.buffer.as_str()),
+            Continue::End => None,
+        })
     }
 }

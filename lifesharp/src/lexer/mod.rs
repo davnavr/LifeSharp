@@ -7,7 +7,7 @@ use typed_arena::Arena;
 
 mod input;
 
-pub use input::{CharIteratorInput, Input, InputSource, ReaderInput};
+pub use input::{Continue, Input, InputSource};
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 #[repr(transparent)]
@@ -110,8 +110,6 @@ pub fn tokenize<'o, S: InputSource>(
     source: S,
     cache: Option<&mut Cache<'o>>,
 ) -> Result<Output<'o>, <<S as InputSource>::IntoInput as Input>::Error> {
-    let mut output = Output::default();
-
     let mut owned_line_buffer;
     let line_buffer: &mut String;
 
@@ -139,7 +137,10 @@ pub fn tokenize<'o, S: InputSource>(
 
     let input = input::Wrapper::new(source, line_buffer);
 
-    Ok(output)
+    Ok(Output {
+        tokens: tokens.clone().into_boxed_slice(),
+        locations: (),
+    })
 }
 
 #[cfg(test)]
