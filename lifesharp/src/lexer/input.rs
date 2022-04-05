@@ -2,13 +2,13 @@
 
 #![deny(missing_docs)]
 
+use crate::location;
 use std::convert::Infallible;
-use std::iter::IntoIterator;
 
 /// Buffer used to store a [`String`] without line feed (`\n`) or carriage return (`\r`) characters.
 #[derive(Debug)]
 #[repr(transparent)]
-pub struct LineBuffer<'a>(&'a mut String);
+pub struct LineBuffer<'a>(&'a mut String); // TODO: Could have field for column number.
 
 impl LineBuffer<'_> {
     /// Appends a character to the buffer.
@@ -103,10 +103,13 @@ impl InputSource for std::fs::File {
     }
 }
 
+// TODO: Keep track of location information (could track column and line numbers directly, but storing byte offsets alongside tokens is more space efficient, so location::Map may be useful).
+
 #[derive(Debug)]
 pub(super) struct Wrapper<'b, I> {
     input: I,
     buffer: &'b mut String,
+    current_line: location::Number,
 }
 
 impl<'b, I: Input> Wrapper<'b, I> {
@@ -114,14 +117,21 @@ impl<'b, I: Input> Wrapper<'b, I> {
         Self {
             input: source.into_input(),
             buffer,
+            current_line: location::FIRST_NUMBER,
         }
     }
 
-    pub(super) fn next_line(&mut self) -> Result<Option<&str>, <I as Input>::Error> {
+    pub(super) fn next_line(
+        &mut self,
+    ) -> Result<Option<(&str, location::Number)>, <I as Input>::Error> {
         self.buffer.clear();
 
         Ok(match self.input.next_line(LineBuffer(self.buffer))? {
-            Continue::More => Some(self.buffer.as_str()),
+            Continue::More => {
+                let line_number = self.current_line;
+                location::increment_number(&mut self.current_line);
+                Some((self.buffer.as_str(), line_number))
+            }
             Continue::End => None,
         })
     }

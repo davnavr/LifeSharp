@@ -1,7 +1,7 @@
 //! Tokenization of LifeSharp source code.
 
-use crate::identifier::{Id, Identifier};
-use crate::location::{Location, Offset, OffsetRange};
+use crate::identifier::Identifier;
+use crate::location::{self, Location, OffsetRange};
 use crate::print;
 use typed_arena::Arena;
 
@@ -91,19 +91,33 @@ pub enum Token<'l> {
 }
 
 /// Allows the reuse of some objects allocated during tokenization.
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub struct Cache<'o> {
+    //buffer: std::cell::RefCell<Buffer>, // Allows dropping of all buffers when tokenization is done.
     line_buffer: String,
     tokens: Vec<(Token<'o>, OffsetRange)>,
     //locations:
+    //literal_strings: Arena<LiteralString>,
+    //identifiers: Arena<Identifier>,
 }
 
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub struct Output<'o> {
     tokens: Box<[(Token<'o>, OffsetRange)]>,
-    literal_strings: Arena<LiteralString>,
-    identifiers: Arena<Identifier>,
+    //literal_strings: Arena<LiteralString>,
+    //identifiers: Arena<Identifier>,
     locations: (), //LocationMap,
+}
+
+impl Output<'_> {
+    /// Gets the tokens from the source file.
+    pub fn tokens(&self) -> &[(Token<'_>, OffsetRange)] {
+        &self.tokens
+    }
+
+    //pub fn locations(&self) -> &LocationMap
+
+    //pub fn located_tokens
 }
 
 pub fn tokenize<'o, S: InputSource>(
@@ -135,7 +149,16 @@ pub fn tokenize<'o, S: InputSource>(
         tokens = &mut owned_tokens;
     }
 
-    let input = input::Wrapper::new(source, line_buffer);
+    let mut input = input::Wrapper::new(source, line_buffer);
+
+    while let Some((current_line, line_number)) = input.next_line()? {
+        let mut column_number = location::FIRST_NUMBER;
+        let mut byte_offset = 0usize;
+        for code_point in current_line.chars() {
+            location::increment_number(&mut column_number);
+            byte_offset += 1;
+        }
+    }
 
     Ok(Output {
         tokens: tokens.clone().into_boxed_slice(),
