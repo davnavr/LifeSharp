@@ -59,16 +59,18 @@ pub enum Token<'l> {
     PlusSign,
     MinusSign,
     Asterisk,
-    /// Used to indicate the type of something, such as a local variable (e.g. `let x: u32`), parameter, or return type.
+    /// Used to separate things on the same line.
     Semicolon,
     ForwardSlash,
     Period,
     Equals,
     Ampersand,
     VerticalBar,
+    /// Used to indicate the type of something, such as a local variable (e.g. `let x: u32`), parameter, or return type.
+    Colon,
     /// Used to denote an item within a path, such as in `some\modules\containing::MyType`, where semicolons indicate that
     /// `MyType` is the name of a type.
-    DoubleSemicolon,
+    DoubleColon,
     /// The assignment operator (`<-`) writes a value to a memory location.
     Assignment,
     /// Indicates the return value of an anonymous function (`fun (x: u32) -> x + 1u32`).
@@ -189,17 +191,6 @@ pub fn tokenize<'o, S: InputSource>(
     }
 
     while let Some((current_line, line_number)) = input.next_line()? {
-        // let mut column_number = location::FIRST_NUMBER;
-
-        // for code_point in current_line.chars() {
-        //     match code_point {
-        //         _ => todo!("handle unknown code points"),
-        //     };
-
-        //     location::increment_number(&mut column_number);
-        //     byte_offset += code_point.len_utf8();
-        // }
-
         // TODO: Count leading spaces in current line to calculate indentation.
 
         let mut line = LineCharacters::new(current_line, next_byte_offset);
@@ -207,6 +198,7 @@ pub fn tokenize<'o, S: InputSource>(
         while let Some((code_point, start_byte_offset, remaining_line)) = line.next_char() {
             macro_rules! simple_token {
                 ($name: ident) => {{
+                    // TODO: On token emit, add to the location map.
                     tokens.push((
                         Token::$name,
                         location::OffsetRange {
@@ -221,6 +213,26 @@ pub fn tokenize<'o, S: InputSource>(
 
             match code_point {
                 '{' => simple_token!(OpenCurlyBrace),
+                '}' => simple_token!(CloseCurlyBrace),
+                '(' => simple_token!(OpenParenthesis),
+                ')' => simple_token!(CloseParenthesis),
+                '[' => simple_token!(OpenSquareBracket),
+                ']' => simple_token!(CloseSquareBracket),
+                '<' => simple_token!(LessThan),
+                '>' => simple_token!(GreaterThan),
+                '\\' => simple_token!(BackwardSlash),
+                '+' => simple_token!(PlusSign),
+                '-' => simple_token!(MinusSign),
+                '*' => simple_token!(Asterisk),
+                ';' => simple_token!(Semicolon),
+                '/' => simple_token!(ForwardSlash),
+                '.' => simple_token!(Period),
+                '=' => simple_token!(Equals),
+                '&' => simple_token!(Ampersand),
+                '|' => simple_token!(VerticalBar),
+                //':' // TODO: Check if double colon
+                
+                _ => todo!("other tokens"),
             }
         }
 
@@ -235,10 +247,42 @@ pub fn tokenize<'o, S: InputSource>(
 
 #[cfg(test)]
 mod tests {
-    use crate::lexer::Token;
+    use crate::location::OffsetRange;
+    use crate::lexer::{self, Token};
 
     #[test]
-    fn size_is_acceptable() {
+    fn token_size_is_acceptable() {
         assert!(std::mem::size_of::<Token>() <= 16)
     }
+
+    macro_rules! single_token_test {
+        ($name: ident, $input: expr, $output: expr) => {
+            #[test]
+            fn $name() {
+                let input: &'static str = $input;
+                let tokens = lexer::tokenize(input, None).unwrap();
+                let expected: Token = $output;
+                assert_eq!(&[ (expected, OffsetRange { start: 0, end: 1 }) ], tokens.tokens())
+            }
+        };
+    }
+
+    single_token_test!(open_curly_brace, "{", Token::OpenCurlyBrace);
+    single_token_test!(close_curly_brace, "}", Token::CloseCurlyBrace);
+    single_token_test!(open_parenthesis, "(", Token::OpenParenthesis);
+    single_token_test!(close_parenthesis, ")", Token::CloseParenthesis);
+    single_token_test!(open_square_bracket, "[", Token::OpenSquareBracket);
+    single_token_test!(close_square_bracket, "]", Token::CloseSquareBracket);
+    single_token_test!(less_than, "<", Token::LessThan);
+    single_token_test!(greater_than, ">", Token::GreaterThan);
+    single_token_test!(backward_slash, "\\", Token::BackwardSlash);
+    single_token_test!(plus_sign, "+", Token::PlusSign);
+    single_token_test!(minus_sign, "-", Token::MinusSign);
+    single_token_test!(asterisk, "*", Token::Asterisk);
+    single_token_test!(semicolon, ";", Token::Semicolon);
+    single_token_test!(forward_slash, "/", Token::ForwardSlash);
+    single_token_test!(period, ".", Token::Period);
+    single_token_test!(equal_sign, "=", Token::Equals);
+    single_token_test!(ampersand, "&", Token::Ampersand);
+    single_token_test!(vertical_bar, "|", Token::VerticalBar);
 }

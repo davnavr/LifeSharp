@@ -58,7 +58,7 @@ struct MapEntry {
 }
 
 /// Maps offsets in a source file to line and column numbers.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct Map {
     lookup: btree_map::BTreeMap<MapKey, MapEntry>,
 }
