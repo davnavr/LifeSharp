@@ -62,3 +62,9 @@ struct MapEntry {
 pub struct Map {
     lookup: btree_map::BTreeMap<MapKey, MapEntry>,
 }
+
+impl Map {
+    pub(crate) fn insert(&mut self, line: Number, column: Number, offset_range: OffsetRange) {
+        todo!("insert location")
+    }
+}

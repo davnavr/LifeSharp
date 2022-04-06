@@ -150,14 +150,79 @@ pub fn tokenize<'o, S: InputSource>(
     }
 
     let mut input = input::Wrapper::new(source, line_buffer);
+    let mut next_byte_offset: location::Offset = 0;
+    let mut current_indent_level = 0u64;
+
+    /// Allows reading of characters from a line of source code, automatically counting position information and allowing
+    /// backtracking.
+    #[derive(Clone)]
+    struct LineCharacters<'a> {
+        remaining: std::str::Chars<'a>,
+        column_number: location::Number,
+        byte_offset: location::Offset,
+    }
+
+    impl<'a> LineCharacters<'a> {
+        fn new(line: &'a str, byte_offset: location::Offset) -> Self {
+            Self {
+                remaining: line.chars(),
+                column_number: location::FIRST_NUMBER,
+                byte_offset,
+            }
+        }
+
+        fn next_char(&self) -> Option<(char, location::Offset, Self)> {
+            let mut remaining = self.remaining.clone();
+            let next = remaining.next()?;
+            let byte_offset = self.byte_offset;
+            let mut next_characters = Self {
+                remaining,
+                byte_offset: self.byte_offset + 1,
+                ..self.clone()
+            };
+
+            location::increment_number(&mut next_characters.column_number);
+            Some((next, byte_offset, next_characters))
+        }
+    }
 
     while let Some((current_line, line_number)) = input.next_line()? {
-        let mut column_number = location::FIRST_NUMBER;
-        let mut byte_offset = 0usize;
-        for code_point in current_line.chars() {
-            location::increment_number(&mut column_number);
-            byte_offset += 1;
+        // let mut column_number = location::FIRST_NUMBER;
+
+        // for code_point in current_line.chars() {
+        //     match code_point {
+        //         _ => todo!("handle unknown code points"),
+        //     };
+
+        //     location::increment_number(&mut column_number);
+        //     byte_offset += code_point.len_utf8();
+        // }
+
+        // TODO: Count leading spaces in current line to calculate indentation.
+
+        let mut line = LineCharacters::new(current_line, next_byte_offset);
+
+        while let Some((code_point, start_byte_offset, remaining_line)) = line.next_char() {
+            macro_rules! simple_token {
+                ($name: ident) => {{
+                    tokens.push((
+                        Token::$name,
+                        location::OffsetRange {
+                            start: start_byte_offset,
+                            end: start_byte_offset + 1,
+                        },
+                    ));
+                    line = remaining_line;
+                    break;
+                }};
+            }
+
+            match code_point {
+                '{' => simple_token!(OpenCurlyBrace),
+            }
         }
+
+        next_byte_offset = line.byte_offset;
     }
 
     Ok(Output {
