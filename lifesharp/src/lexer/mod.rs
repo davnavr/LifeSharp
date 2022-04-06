@@ -69,18 +69,18 @@ pub enum Token<'l> {
     /// Used to denote an item within a path, such as in `some\modules\containing::MyType`, where semicolons indicate that
     /// `MyType` is the name of a type.
     DoubleSemicolon,
-    /// The `def` keyword indicates the start of a function definition.
-    Define,
     /// The assignment operator (`<-`) writes a value to a memory location.
     Assignment,
-    /// Indicates the start of an anonymous function (`fun`).
-    Lambda,
     /// Indicates the return value of an anonymous function (`fun (x: u32) -> x + 1u32`).
     LambdaReturn,
+    /// The `def` keyword indicates the start of a function definition.
+    KeywordDef,
+    /// Indicates the start of an anonymous function (`fun`).
+    KeywordFun,
     /// The `use` keyword brings items within a path into scope.
-    Use,
+    KeywordUse,
     /// The `type` keyword indicates the start of a type definition.
-    Type,
+    KeywordType,
     //And, // TODO: How will bitwise operators be represented?
     //Not,
     //Or,
@@ -88,6 +88,8 @@ pub enum Token<'l> {
     LiteralString(&'l LiteralString),
     LiteralBoolean(bool),
     Identifier(&'l Identifier),
+    TypeParameter(&'l Identifier),
+    LifetimeParameter(&'l Identifier),
 }
 
 /// Allows the reuse of some objects allocated during tokenization.
